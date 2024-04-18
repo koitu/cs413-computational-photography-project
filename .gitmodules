@@ -1,0 +1,3 @@
+[submodule "tunnel_book/depth_anything"]
+	path = tunnel_book/depth_anything
+	url = git@github.com:LiheYoung/Depth-Anything.git
