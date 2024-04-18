@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.append(os.path.join(sys.path[0], "tunnel_book/DepthAnything"))
+
 import cv2
 import torch
 import requests
@@ -13,8 +17,8 @@ from sklearn.cluster import KMeans
 from skimage.segmentation import slic, mark_boundaries
 from skimage.transform import resize
 
-from depth_anything.depth_anything.dpt import DepthAnything
-from depth_anything.depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
+from tunnel_book.DepthAnything.depth_anything.dpt import DepthAnything
+from tunnel_book.DepthAnything.depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
 
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 

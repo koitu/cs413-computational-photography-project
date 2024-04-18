@@ -1,3 +1,4 @@
 [submodule "tunnel_book/DepthAnything"]
 	path = tunnel_book/DepthAnything
 	url = git@github.com:LiheYoung/Depth-Anything.git
+	dirty = ignore
