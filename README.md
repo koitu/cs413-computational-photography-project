@@ -14,7 +14,7 @@ layers_idx: list of list.
 
 layers: list of segment-anything mask (downsampling of the input image)<br>
 ```
-layer[0] = 
+layer 1 = 
 [{'segmentation': array([[False, False, False, ..., False, False, False],
          [False, False, False, ..., False, False, False],
          [False, False, False, ..., False, False, False],
