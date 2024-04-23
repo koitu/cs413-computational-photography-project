@@ -9,5 +9,5 @@ git submodule update --init --recursive
 ```
 
 # Segmented object Output
-layer#.npy: an array of object masks on one layer.
+layer#.npy: an array of object masks on one layer (with the same size as the downsampled input image).
 
