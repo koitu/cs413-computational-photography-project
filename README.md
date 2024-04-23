@@ -9,7 +9,8 @@ git submodule update --init --recursive
 ```
 
 # Segmentation Output
-layers_idx: list of list. eg: [[1, 7], [2, 4, 11, 12], [0, 3, 5, 6, 8, 9, 10]]
+layers_idx: list of list. 
+```[[1, 7], [2, 4, 11, 12], [0, 3, 5, 6, 8, 9, 10]]```
 layers: list of segment-anything mask<br>
 ```
 layer[0] = 
