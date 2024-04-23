@@ -8,7 +8,7 @@ otherwise you will need to add submodules manually
 git submodule update --init --recursive
 ```
 
-# Segmentation Output
+# Segmented object Output
 layers_idx: list of list. 
 ```[[1, 7], [2, 4, 11, 12], [0, 3, 5, 6, 8, 9, 10]]```
 
