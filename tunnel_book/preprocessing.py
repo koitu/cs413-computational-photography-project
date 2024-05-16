@@ -103,7 +103,7 @@ def kmeans(d_img, n_clusters=4):
     img_masks = [(np.mean(d_img[m]), m) for m in img_masks]
     sorted(img_masks, key=lambda x: x[0])
 
-    for i, m in enumerate(img_masks):
+    for i, m in img_masks:
         res[m] = i
     return res
 

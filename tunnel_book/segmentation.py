@@ -6,12 +6,14 @@ import requests
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PIL import Image
-from io import BytesIO
-from torchvision.transforms import Compose
+from urllib.request import urlretrieve
 
-from depth_anything.depth_anything.dpt import DepthAnything
-from depth_anything.depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
+# from PIL import Image
+# from io import BytesIO
+# from torchvision.transforms import Compose
+#
+# from depth_anything.depth_anything.dpt import DepthAnything
+# from depth_anything.depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
 
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import KMeans
@@ -25,11 +27,19 @@ model_path = "./models/sam_vit_h_4b8939.pth"
 model_type = "vit_h"
 device = "cuda"
 
+if not os.path.isfile(model_path):
+    urlretrieve("https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth", model_path)
+    # https://stackoverflow.com/questions/37748105/how-to-use-progressbar-module-with-urlretrieve
+
 sam = sam_model_registry[model_type](checkpoint=model_path)
 sam.to(device=device)
 
 segment_anything = SamAutomaticMaskGenerator(sam)
 # end init for segment anything
+
+
+def get_msk_gen():
+    return segment_anything
 
 
 def show_anns(anns):
