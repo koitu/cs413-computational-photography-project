@@ -11,3 +11,5 @@ git submodule update --init --recursive
 # Segmented object Output
 layer#.npy: an array of object masks on one layer (with the same size as the downsampled input image).
 
+# Parallax Effect Web
+Click [here](https://epfl-ada.github.io/cs413-computational-photography-project)
