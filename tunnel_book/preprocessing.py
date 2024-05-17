@@ -20,7 +20,7 @@ from skimage.transform import resize
 from tunnel_book.DepthAnything.depth_anything.dpt import DepthAnything
 from tunnel_book.DepthAnything.depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
 
-from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+# from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 
 # start init for depth anything
 encoder = 'vits'  # can also be 'vitb' or 'vitl'
