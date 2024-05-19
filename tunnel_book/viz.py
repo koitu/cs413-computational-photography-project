@@ -29,7 +29,7 @@ def show_all_segmts_ind(masks, img_lr):
       plt.show()
 
 
-def save_layers(img, object_masks, groups, file_names):
+def save_layers(img, object_masks, groups):
     fig = plt.figure(figsize=(10, 8))
 
     for i, group in enumerate(groups):
@@ -56,8 +56,8 @@ def save_layers(img, object_masks, groups, file_names):
     plt.tight_layout()
 
     # Save each subplot as a separate PNG file
-    for i, ax in enumerate(fig.axes):
-        extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-        fig.savefig(file_names[i], bbox_inches=extent, format='png', transparent=True, dpi=300)
+    # for i, ax in enumerate(fig.axes):
+    #     extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    #     fig.savefig(file_names[i], bbox_inches=extent, format='png', transparent=True, dpi=300)
 
     plt.show(fig)
