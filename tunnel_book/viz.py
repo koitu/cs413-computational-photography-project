@@ -19,7 +19,7 @@ def show_anns(anns):
 
 
 def show_all_segmts_ind(masks, img_lr):
-  for i, m in enumerate(masks):
+  for i, mask in enumerate(masks):
       plt.figure(figsize=(15,7))
       mask = m['segmentation']
       mask = np.repeat(mask[:, :, np.newaxis], 3, axis=2)
@@ -29,7 +29,7 @@ def show_all_segmts_ind(masks, img_lr):
       plt.show()
 
 
-def save_layers(img, object_masks, groups):
+def show_layers(img, object_masks, groups):
     fig = plt.figure(figsize=(10, 8))
 
     for i, group in enumerate(groups):
@@ -54,10 +54,5 @@ def save_layers(img, object_masks, groups):
         ax.set_title(f'Layer {i+1}')
 
     plt.tight_layout()
-
-    # Save each subplot as a separate PNG file
-    # for i, ax in enumerate(fig.axes):
-    #     extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-    #     fig.savefig(file_names[i], bbox_inches=extent, format='png', transparent=True, dpi=300)
 
     plt.show(fig)
