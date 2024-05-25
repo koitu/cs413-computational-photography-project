@@ -7,6 +7,7 @@ from yellowbrick.cluster import KElbowVisualizer
 
 
 def get_optimal_k(object_masks, depth):
+    depth = torch.from_numpy(depth)
     depth_features = []
     for m in object_masks:
         mask = m['segmentation']
