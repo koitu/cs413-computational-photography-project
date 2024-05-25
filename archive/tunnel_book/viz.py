@@ -19,7 +19,7 @@ def show_anns(anns):
 
 
 def show_all_segmts_ind(masks, img_lr):
-  for i, mask in enumerate(masks):
+  for i, m in enumerate(masks):
       plt.figure(figsize=(15,7))
       mask = m['segmentation']
       mask = np.repeat(mask[:, :, np.newaxis], 3, axis=2)

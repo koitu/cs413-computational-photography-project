@@ -1,5 +1,58 @@
+import torch
+
 import numpy as np
+
 from sklearn.cluster import KMeans
+from yellowbrick.cluster import KElbowVisualizer
+
+
+def get_optimal_k(object_masks, depth):
+    depth_features = []
+    for m in object_masks:
+        mask = m['segmentation']
+        mask_tensor = torch.tensor(mask, dtype=torch.bool)
+        mask_depth = depth[mask_tensor]
+        if mask_depth.numel() > 0:
+            average_depth = torch.mean(mask_depth.float())
+            depth_features.append([average_depth.item()])
+
+    depth_features = np.array(depth_features)
+    model = KMeans()
+    visualizer = KElbowVisualizer(model, k=(2, 10), metric='distortion', timings=True)
+    visualizer.fit(depth_features)
+    # visualizer.show()
+
+    # optimalK = visualizer.elbow_value_
+    # print(f"Optimal number of clusters: {optimalK}")
+    return visualizer.elbow_value_
+
+
+def kmeans(d_img, n_clusters=4):
+    """
+    takes an image and returns a kmeans clustering mask
+    - img[(mask == 0)] will extract the back-most layer
+    - img[(mask == (n-1))] will extract the front-most layer
+    """
+    # compute the KMeans segmentation layers
+    n, m = np.shape(d_img)
+
+    res = np.reshape(d_img, (n * m, 1))
+
+    k_means = KMeans(n_clusters=n_clusters)
+    k_means.fit(res)
+    res = k_means.predict(res)
+
+    res = np.reshape(res, (n, m))
+
+    # order the segmentation layers such that the back-most has id 0
+    layer_ids = np.unique(res)
+    img_masks = [(res == i) for i in layer_ids]
+    img_masks = [(np.mean(d_img[m]), m) for m in img_masks]
+    sorted(img_masks, key=lambda x: x[0])
+
+    for i, m in img_masks:
+        res[m] = i
+    return res
 
 
 def assign2layers_kmeans(object_masks, depth, n_layers=4):

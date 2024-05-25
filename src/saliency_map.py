@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# taken from: https://github.com/mpatacchiola/deepgaze/blob/master/deepgaze/saliency_map.py
 
 # The MIT License (MIT)
 # Copyright (c) 2017 Massimiliano Patacchiola

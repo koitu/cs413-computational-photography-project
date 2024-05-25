@@ -1,61 +1,50 @@
 import os
 
-import cv2
-import torch
-import requests
 import numpy as np
 import matplotlib.pyplot as plt
 
 from urllib.request import urlretrieve
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator #, SamPredictor
+from skimage.segmentation import slic
 
-# from PIL import Image
-# from io import BytesIO
-# from torchvision.transforms import Compose
+
+class SegmentModel:
+    def __init__(self, points_per_side=32):
+        model_path = "./models/sam_vit_h_4b8939.pth"
+        model_type = "vit_h"
+        device = "cuda"
+
+        if not os.path.isfile(model_path):
+            urlretrieve("https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth", model_path)
+            # https://stackoverflow.com/questions/37748105/how-to-use-progressbar-module-with-urlretrieve
+
+        sam = sam_model_registry[model_type](checkpoint=model_path)
+        sam.to(device=device)
+
+        self.segment_anything = SamAutomaticMaskGenerator(sam, points_per_side=points_per_side)
+
+
+InitSegmentModel = None
+
+
+# def get_msk_gen():
+#     return segment_anything
+
+
+# def show_anns(anns):
+#     if len(anns) == 0:
+#         return
+#     sorted_anns = sorted(anns, key=(lambda x: x['area']), reverse=True)
+#     ax = plt.gca()
+#     ax.set_autoscale_on(False)
 #
-# from depth_anything.depth_anything.dpt import DepthAnything
-# from depth_anything.depth_anything.util.transform import Resize, NormalizeImage, PrepareForNet
-
-from sklearn.cluster import DBSCAN
-from sklearn.cluster import KMeans
-# from yellowbrick.cluster import KElbowVisualizer
-
-from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
-
-
-# start init for segment anything
-model_path = "./models/sam_vit_h_4b8939.pth"
-model_type = "vit_h"
-device = "cuda"
-
-if not os.path.isfile(model_path):
-    urlretrieve("https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth", model_path)
-    # https://stackoverflow.com/questions/37748105/how-to-use-progressbar-module-with-urlretrieve
-
-sam = sam_model_registry[model_type](checkpoint=model_path)
-sam.to(device=device)
-
-segment_anything = SamAutomaticMaskGenerator(sam)
-# end init for segment anything
-
-
-def get_msk_gen():
-    return segment_anything
-
-
-def show_anns(anns):
-    if len(anns) == 0:
-        return
-    sorted_anns = sorted(anns, key=(lambda x: x['area']), reverse=True)
-    ax = plt.gca()
-    ax.set_autoscale_on(False)
-
-    img = np.ones((sorted_anns[0]['segmentation'].shape[0], sorted_anns[0]['segmentation'].shape[1], 4))
-    img[:,:,3] = 0
-    for ann in sorted_anns:
-        m = ann['segmentation']
-        color_mask = np.concatenate([np.random.random(3), [0.35]])
-        img[m] = color_mask
-    ax.imshow(img)
+#     img = np.ones((sorted_anns[0]['segmentation'].shape[0], sorted_anns[0]['segmentation'].shape[1], 4))
+#     img[:,:,3] = 0
+#     for ann in sorted_anns:
+#         m = ann['segmentation']
+#         color_mask = np.concatenate([np.random.random(3), [0.35]])
+#         img[m] = color_mask
+#     ax.imshow(img)
 
 
 def show_all_segmts_ind(masks, img):
@@ -88,7 +77,7 @@ def remove_small_masks(masks, threshold=500):
     return large_masks
 
 
-def remove_overlapping(masks, ovlp_r_thrd=0.05):
+def remove_overlapping(masks, overlap_ratio_threshold=0.05):
     embedded_objects = []
 
     for i in range(len(masks)):
@@ -103,30 +92,38 @@ def remove_overlapping(masks, ovlp_r_thrd=0.05):
             # Calculate the percentage of overlap, relative to smaller masks
             if overlap_size > 0:  # Ensure overlap
                 overlap_ratio = round(overlap_size / min(mask_i_size, mask_j_size),4)
-                if overlap_ratio > ovlp_r_thrd:
+                if overlap_ratio > overlap_ratio_threshold:
                     if mask_i_size > mask_j_size:
                         embedded_objects.append(j)
                     else:
                         embedded_objects.append(i)
                 # else:
                 #     print(f"There is no overlap between Mask {i} and Mask {j}.")
-    non_ovlp_object_masks = np.delete(masks, embedded_objects).tolist()
+    non_overlap_object_masks = np.delete(masks, embedded_objects).tolist()
 
-    return embedded_objects, non_ovlp_object_masks
+    return embedded_objects, non_overlap_object_masks
 
 
-def obtain_rest_of_img(object_masks, orignial_img):
+def obtain_rest_of_img(object_masks, original_img):
     combined_mask = np.sum([m['segmentation'] for m in object_masks], axis=0)
     unsegmented_part = np.where(combined_mask > 0, 0, 1)
-    res_img = np.ones_like(orignial_img)
+    res_img = np.ones_like(original_img)
     for i in range(3):
-        res_img[:, :, i][unsegmented_part == 1] = orignial_img[:, :, i][unsegmented_part == 1]
+        res_img[:, :, i][unsegmented_part == 1] = original_img[:, :, i][unsegmented_part == 1]
 
     return res_img
 
 
 def img_white_p_ratio(img):
     return np.sum(img == 1.0)/(img.shape[0]*img.shape[1]*img.shape[2])
+
+
+def rest_image_pixel_ratio(object_masks):
+    num_seg_pixel = 0
+    for mask in object_masks:
+        m = mask['segmentation']
+        num_seg_pixel += np.sum(m)
+    return num_seg_pixel/(m.shape[0]*m.shape[1])
 
 
 def remove_white_canva(res_img, res_masks):
@@ -150,35 +147,34 @@ def remove_white_canva(res_img, res_masks):
     return res_masks_no_white_bg
 
 
-def obtain_all_objects(img_to_procd, img_w_r_thrd=0.90, diff_thrd=0.01, n_thrd=3):
-
+def obtain_all_objects(mask_generator, img_to_procd, img_r_thrd=0.90, n_thrd=5, ovlp_r_thrd=0.1, small_thrd=500):
     n = 0
     diff = 1
     object_masks = []
     rows = img_to_procd.shape[0]
     cols = img_to_procd.shape[1]
-    img_w_r = img_white_p_ratio(img_to_procd)
+    img_r = 0
 
     orignial_img = img_to_procd
 
-    while img_w_r < img_w_r_thrd and diff > diff_thrd and n <= n_thrd:
+    while img_r < img_r_thrd and n <= n_thrd:
 
-        masks = segment_anything.generate(img_to_procd)
+        masks = mask_generator.generate(img_to_procd)
         if n > 0:
             masks = remove_white_canva(img_to_procd, masks)
 
-        large_masks = remove_small_masks(masks)
+        large_masks = remove_small_masks(masks, small_thrd)
         object_masks.extend(large_masks)
-        embedded_objects, object_masks = remove_overlapping(object_masks)
+        embedded_objects, object_masks = remove_overlapping(object_masks, ovlp_r_thrd)
 
         # check_overlapping(object_masks)
 
         res_img = obtain_rest_of_img(object_masks, orignial_img)
 
-        img_w_r = img_white_p_ratio(res_img)
-        diff = np.sum(np.abs(res_img - img_to_procd))/(rows*cols)
+        img_r = round(rest_image_pixel_ratio(object_masks), 2)
+        # diff = np.sum(np.abs(res_img - img_to_procd))/(rows*cols)
         n += 1
-        print(f"Iteration n={n}: white pixel raito after segmentation = {img_w_r}, difference ={diff}")
+        print(f"Iteration n={n}: white pixel raito after segmentation = {img_r}")
 
         img_to_procd = res_img
 
@@ -209,7 +205,7 @@ def check_overlapping(masks):
         print("There is no overlap")
 
 
-def show_layers(img,object_masks, groups):
+def show_layers(img, object_masks, groups):
     plt.figure(figsize=(10, 8))
 
     for i, group in enumerate(groups):
@@ -232,79 +228,68 @@ def show_layers(img,object_masks, groups):
     plt.show()
 
 
-def assign2layers_avg_obj(object_masks, depth, n_layers=4):
-    # Step 1: Calculate the average depth of each mask
-    average_depths = []
-    for m in object_masks:
-        mask = m["segmentation"]
-        # Calculate the average depth of the depth map region corresponding to mask
-        average_depth = np.mean(depth[mask])
-        average_depths.append(average_depth)
+# def assign2layers_avg_obj(object_masks, depth, n_layers=4):
+#     # Step 1: Calculate the average depth of each mask
+#     average_depths = []
+#     for m in object_masks:
+#         mask = m["segmentation"]
+#         # Calculate the average depth of the depth map region corresponding to mask
+#         average_depth = np.mean(depth[mask])
+#         average_depths.append(average_depth)
+#
+#     # Step 2: Sort objects by average depth
+#     sorted_indices = np.argsort(average_depths)
+#
+#     # Step 3: Assign objects to layers
+#     # Calculate the minimum number of objects per layer
+#     objects_per_layer = len(object_masks) // n_layers
+#     # Calculate the number of objects to be distributed in the first few layers
+#     extra_objects = len(object_masks) % n_layers
+#
+#     layers = []
+#     layers_inx = []
+#     start_idx = 0
+#     for i in range(n_layers):
+#         if i < extra_objects:
+#             # Assign one extra object to this layer
+#             end_idx = start_idx + objects_per_layer + 1
+#         else:
+#             end_idx = start_idx + objects_per_layer
+#
+#         # Selected sorted objects for each layer
+#         layer_indices = sorted_indices[start_idx:end_idx]
+#         layer = [object_masks[index] for index in layer_indices]
+#         layers.append(layer)
+#         layers_inx.append(layer_indices)
+#         start_idx = end_idx
+#
+#     return layers_inx, layers
 
-    # Step 2: Sort objects by average depth
-    sorted_indices = np.argsort(average_depths)
+def fill_with_superpixels(img_lr, object_masks):
+    rgb_slic = slic(img_lr, n_segments=1000, start_label=1, slic_zero=True)
 
-    # Step 3: Assign objects to layers
-    # Calculate the minimum number of objects per layer
-    objects_per_layer = len(object_masks) // n_layers
-    # Calculate the number of objects to be distributed in the first few layers
-    extra_objects = len(object_masks) % n_layers
+    unique_superpixels, superpixel_counts = np.unique(rgb_slic, return_counts=True)
+    superpixel_areas = dict(zip(unique_superpixels, superpixel_counts))
+    new_masks = []
 
-    layers = []
-    layers_inx = []
-    start_idx = 0
-    for i in range(n_layers):
-        if i < extra_objects:
-            # Assign one extra object to this layer
-            end_idx = start_idx + objects_per_layer + 1
-        else:
-            end_idx = start_idx + objects_per_layer
+    for seg in object_masks:
+        mask = seg['segmentation']
+        masked_superpixel_areas = {label: np.sum(mask[rgb_slic == label]) for label in unique_superpixels}
+        overlapping_threshold = 0.1
+        overlapping_superpixels = [label for label, masked_area in masked_superpixel_areas.items()
+                                   if masked_area / superpixel_areas[label] > overlapping_threshold]
+        new_mask = np.isin(rgb_slic, overlapping_superpixels)
+        new_masks.append(new_mask)
 
-        # Selected sorted objects for each layer
-        layer_indices = sorted_indices[start_idx:end_idx]
-        layer = [object_masks[index] for index in layer_indices]
-        layers.append(layer)
-        layers_inx.append(layer_indices)
-        start_idx = end_idx
+    for i, seg in enumerate(object_masks):
+        seg['segmentation'] = new_masks[i]
 
-    return layers_inx, layers
-
-
-def assign2layers_kmeans(object_masks, depth, n_layers=4):
-    # Step 1: Calculate the average depth of each mask
-    average_depths = []
-    for m in object_masks:
-        mask = m["segmentation"]
-        average_depth = np.mean(depth[mask])
-        average_depths.append(average_depth)
-
-    # Convert average_depths to shapes suitable for KMeans inputs
-    average_depths_np = np.array(average_depths).reshape(-1, 1)
-
-    # Step 2: Use K-means to cluster objects
-    kmeans = KMeans(n_clusters=n_layers, random_state=0).fit(average_depths_np)
-    labels = kmeans.labels_
-
-    # Get the centers of clustering and sort these centers by depth
-    centers = kmeans.cluster_centers_.flatten()
-    sorted_centers_indices = np.argsort(centers)
-
-    # Reassign labels based on sorted centers
-    sorted_labels = np.zeros_like(labels)
-    for old_label, new_label in enumerate(sorted_centers_indices):
-        sorted_labels[labels == old_label] = new_label
-
-    # Step 3: Assign objects to layers based on K-means clusters
-    layers = [[] for _ in range(n_layers)]
-    layers_inx = [[] for _ in range(n_layers)]
-    for i, label in enumerate(sorted_labels):
-        layers[label].append(object_masks[i])
-        layers_inx[label].append(i)
-
-    return layers_inx, layers
+    return object_masks
 
 
-def automatic_segment_anything(img, depth, n_layers=4):
+def segment_anything_tunnel_book_oneshot(img, depth, n_layers=4):
+    from src.kmeans import assign2layers_kmeans
+
     # Dowsample the original image
     # img_lr = downsample_image_opencv(raw_image, depth.shape)
 
