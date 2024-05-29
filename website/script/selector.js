@@ -1,26 +1,28 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const selector = document.getElementById('imageSelector');
-    selector.addEventListener('change', function() {
-      const value = this.value;
-      // Logging the value to check if the switch case is entered correctly
-      console.log("Selected value:", value);
+  const selector = document.getElementById('imageSelector');
+  const lakeDiv = document.getElementById('tunnelBook-lake');
+  const gardenCatDiv = document.getElementById('tunnelBook-gardenCat');
+  const snowMountainDiv = document.getElementById('tunnelBook-snowmountain');
+
+  function updateVisibility() {
+      lakeDiv.classList.add('hidden');
+      gardenCatDiv.classList.add('hidden');
+      snowMountainDiv.classList.add('hidden');
+
+      const value = selector.value;
       switch (value) {
-        case 'lake':
-          document.querySelector('.layer-bg').style.backgroundImage = 'url("../images/lake_2.png")';
-          document.querySelector('.layer-1').style.backgroundImage = 'url("../images/lake_1.png")';
-          document.querySelector('.layer-2').style.backgroundImage = 'url("../images/lake_0.png")';
-          break;
-        case 'gardenCat':
-          document.querySelector('.layer-bg').style.backgroundImage = 'url("../images/gardenCat_2.png")';
-          document.querySelector('.layer-1').style.backgroundImage = 'url("../images/gardenCat_1.png")';
-          document.querySelector('.layer-2').style.backgroundImage = 'url("../images/gardenCat_0.png")';
-          break;
-        case 'snowmountain':
-          document.querySelector('.layer-bg').style.backgroundImage = 'url("../images/snowmountain_2.png")';
-          document.querySelector('.layer-1').style.backgroundImage = 'url("../images/snowmountain_1.png")';
-          document.querySelector('.layer-2').style.backgroundImage = 'url("../images/snowmountain_0.png")';
-          break;
+          case 'lake':
+              lakeDiv.classList.remove('hidden');
+              break;
+          case 'gardenCat':
+              gardenCatDiv.classList.remove('hidden');
+              break;
+          case 'snowmountain':
+              snowMountainDiv.classList.remove('hidden');
+              break;
       }
-    });
-  });
-  
+  }
+
+  selector.addEventListener('change', updateVisibility);
+  updateVisibility(); 
+});

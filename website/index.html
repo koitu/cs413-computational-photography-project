@@ -4,13 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parallax Tunnel Book</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
-    <div id="tunnelBook">
-        <div class="layer layer-bg" data-type="parallax" data-depth="0.10"></div>
-        <div class="layer layer-1" data-type="parallax" data-depth="0.30"></div>
-        <div class="layer layer-2" data-type="parallax" data-depth="0.65"></div>
+    <div id="tunnelBook-lake">
+        <div class="layer layer-lake-bg" data-type="parallax" data-depth="0.10"></div>
+        <div class="layer layer-lake-1" data-type="parallax" data-depth="0.50"></div>
+        <div class="layer layer-lake-2" data-type="parallax" data-depth="1"></div>
+    </div>
+
+    <div id="tunnelBook-gardenCat">
+        <div class="layer layer-gardenCat-bg" data-type="parallax" data-depth="0.10"></div>
+        <div class="layer layer-gardenCat-1" data-type="parallax" data-depth="0.50"></div>
+        <div class="layer layer-gardenCat-2" data-type="parallax" data-depth="1"></div>
+    </div>
+
+    <div id="tunnelBook-snowmountain">
+        <div class="layer layer-snowmountain-bg" data-type="parallax" data-depth="0.10"></div>
+        <div class="layer layer-snowmountain-1" data-type="parallax" data-depth="0.50"></div>
+        <div class="layer layer-snowmountain-2" data-type="parallax" data-depth="1"></div>
     </div>
 
     <select id="imageSelector">
@@ -19,7 +31,7 @@
         <option value="snowmountain">Snowy Mountain</option>
     </select>     
 
-    <script src="script/selector.js"></script>
-    <script src="script/hMove.js"></script>
+    <script src="./script/selector.js"></script>
+    <script src="./script/hMove.js"></script>
 </body>
 </html>

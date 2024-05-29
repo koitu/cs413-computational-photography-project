@@ -34,17 +34,40 @@ body {
   transition: transform 0.1s linear;
 }
 
-.layer-bg {
+.hidden {
+  display: none;
+}
+
+.layer-lake-bg {
   background-image: url("../images/lake_2.png");
 }
-
-.layer-1 {
+.layer-lake-1 {
   background-image: url("../images/lake_1.png");
 }
-
-.layer-2 {
+.layer-lake-2 {
   background-image: url("../images/lake_0.png");
 }
+
+.layer-gardenCat-bg {
+  background-image: url("../images/gardenCat_2.png");
+}
+.layer-gardenCat-1 {
+  background-image: url("../images/gardenCat_1.png");
+}
+.layer-gardenCat-2 {
+  background-image: url("../images/gardenCat_0.png");
+}
+
+.layer-snowmountain-bg {
+  background-image: url("../images/snowmountain_2.png");
+}
+.layer-snowmountain-1 {
+  background-image: url("../images/snowmountain_1.png");
+}
+.layer-snowmountain-2 {
+  background-image: url("../images/snowmountain_0.png");
+}
+
 
 #imageSelector {
   position: absolute; 
