@@ -1,8 +1,0 @@
-[submodule "src/DepthAnything"]
-	path = src/DepthAnything
-	url = git@github.com:LiheYoung/Depth-Anything.git
-	dirty = ignore
-[submodule "src/InpaintAnything"]
-	path = src/InpaintAnything
-	url = git@github.com:geekyutao/Inpaint-Anything.git
-	dirty = ignore

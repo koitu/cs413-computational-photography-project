@@ -1,8 +1,0 @@
-.idea/
-
-.ipynb_checkpoints/
-__pycache__/
-models/*
-!models/.gitkeep
-
-.DS_Store
