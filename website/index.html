@@ -4,19 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parallax Tunnel Book</title>
-    <link rel="stylesheet" href="src/css/styles.css">
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div id="hero">
+    <div id="tunnelBook">
         <div class="layer layer-bg" data-type="parallax" data-depth="0.10"></div>
         <div class="layer layer-1" data-type="parallax" data-depth="0.30"></div>
         <div class="layer layer-2" data-type="parallax" data-depth="0.65"></div>
-        <div class="layer layer-3" data-type="parallax" data-depth="0.70"></div>
-        <!-- <div class="layer layer-overlay" data-type="parallax" data-depth="0.75"></div> -->
-        <!-- <div class="layer layer-4" data-type="parallax" data-depth="0.70"></div> -->
     </div>
-    <div id="hero-mobile"></div>
-    <!-- <script src="vScroll.js"></script> -->
-    <script src="src/script/hMove.js"></script>
+
+    <select id="imageSelector">
+        <option value="lake">Lake</option>
+        <option value="gardenCat">Garden Cat</option>
+        <option value="snowmountain">Snowy Mountain</option>
+    </select>     
+
+    <script src="script/selector.js"></script>
+    <script src="script/hMove.js"></script>
 </body>
 </html>

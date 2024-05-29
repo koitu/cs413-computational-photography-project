@@ -1,0 +1,62 @@
+:root {
+  --bronze: #130d0a;
+  --white: #fff;
+  --book-height: 75vh;
+}
+
+body {
+  padding: 0;
+  margin: 0;
+  background-color: var(--bronze);
+  font-family: "Playfair Display", serif;
+  color: var(--white);
+}
+
+#tunnelBook{
+  height: var(--book-height);
+  overflow: hidden;
+  position: relative;
+}
+
+#content {
+  background-color: var(--bronze);
+}
+
+.layer {
+  background-position: bottom center;
+  background-size: auto;
+  background-repeat: no-repeat;
+  position: fixed; 
+  width: 100%;
+  height: var(--book-height); 
+  z-index: -1; 
+  transform: translate3d(0, 0, 0); 
+  transition: transform 0.1s linear;
+}
+
+.layer-bg {
+  background-image: url("../images/lake_2.png");
+}
+
+.layer-1 {
+  background-image: url("../images/lake_1.png");
+}
+
+.layer-2 {
+  background-image: url("../images/lake_0.png");
+}
+
+#imageSelector {
+  position: absolute; 
+  top: 0;
+  left: 0; 
+  margin: 10px; 
+}
+
+
+/* Media Queries */
+@media only screen and (max-width: 768px) {
+  #tunnelBook {
+    display: none;
+  }
+}
