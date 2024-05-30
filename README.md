@@ -13,3 +13,9 @@ layer#.npy: an array of object masks on one layer (with the same size as the dow
 
 # Parallax Effect Web
 Click [here](https://koitu.github.io/cs413-computational-photography-project)
+
+# To update the Github pages
+```
+git push origin --delete gh-pages
+git subtree push --prefix website origin gh-pages
+```
