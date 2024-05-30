@@ -134,10 +134,11 @@ class FasaSaliencyMapping:
         L_centroid, A_centroid, B_centroid = np.meshgrid(self.L_range, self.A_range, self.B_range)
         self.unique_pixels = np.zeros((self.number_of_colors, 3))
         
-        if sys.version_info[0] == 2:
-            color_range = xrange(0, self.number_of_colors)
-        else:
-            color_range = range(0, self.number_of_colors)
+        # if sys.version_info[0] == 2:
+        #     color_range = xrange(0, self.number_of_colors)
+        # else:
+        #     color_range = range(0, self.number_of_colors)
+        color_range = range(0, self.number_of_colors)
         
         for i in color_range:
             i_index = self.index_matrix[i, :]
