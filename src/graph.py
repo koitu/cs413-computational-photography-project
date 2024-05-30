@@ -2,10 +2,11 @@ import numpy as np
 import networkx as nx
 
 from skimage import graph, color
+from scipy.cluster.hierarchy import DisjointSet
 
 
 class RAG:
-    def __init__(self, img, depth, labels):
+    def __init__(self, img, depth, labels, objects=None):
         """
         - img: input image
         - depth: depth of the image
@@ -35,6 +36,7 @@ class RAG:
                     'labels': [n],
                     'mask': None,
                     'pixel count': 0,
+                    'spixel count': 0,
                     'total color': [],
                     'total depth': [],
                 }
@@ -48,6 +50,7 @@ class RAG:
 
         for n in g:
             g.nodes[n]['mask'] = labels == n
+            g.nodes[n]['spixel count'] = 1
             g.nodes[n]['total color'] = np.array(g.nodes[n]['total color'], dtype='float64')
             g.nodes[n]['total depth'] = np.array(g.nodes[n]['total depth'], dtype='float64')
             g.nodes[n]['mean color'] = np.sum(g.nodes[n]['total color'] / g.nodes[n]['pixel count'], axis=0)
@@ -55,8 +58,12 @@ class RAG:
 
         for x, y, edge in g.edges(data=True):
             # some kind of loss function with the distance, color difference, and segment anything result
+            # edge['weight'] = (
+            #         color.deltaE_cie76(g.nodes[x]['mean color'], g.nodes[y]['mean color']) ** 2
+            # )
             edge['weight'] = (
                     color.deltaE_cie76(g.nodes[x]['mean color'], g.nodes[y]['mean color']) ** 2
+                    + (g.nodes[x]['mean depth'] - g.nodes[y]['mean depth']) ** 2
             )
 
         self.boundary_graph = g.copy()
@@ -73,6 +80,23 @@ class RAG:
             g.remove_edge(n, 0)
 
         g.remove_node(0)
+
+        if objects is not None:
+            for obj in objects:
+                mask = obj['segmentation']
+
+                for n in g:
+
+                    n_mask_overlap = np.count_nonzero(g.nodes[n]['mask'] & mask) / g.nodes[n]['pixel count']
+                    if n_mask_overlap > 0.8:
+                        for t in nx.all_neighbors(g, n):
+                            if n < t:
+                                # apply to each edge only once
+                                continue
+
+                            t_mask_overlap = np.count_nonzero(g.nodes[t]['mask'] & mask) / g.nodes[t]['pixel count']
+                            if t_mask_overlap > 0.8:
+                                g[n][t]['weight'] /= 5
 
         self.edge_nodes = regions
         self.graph = g
@@ -145,3 +169,42 @@ def merge_regions_until_done(g, start_regions, regions_left=4):
             regions.remove(n2)
 
     return g, regions
+
+def merge_sets_until_done(g, start_regions, regions_left=4):
+    g = g.copy()
+    ds = DisjointSet(g.nodes())
+    active = start_regions.copy()
+
+    while len(ds.subsets()) > regions_left:
+        cheapest_edge_val = np.inf
+        cheapest_edge = [0, 0]
+
+        # active nodes don't have attachments to interior nodes
+        for n1 in active:
+            for n2 in nx.all_neighbors(g, n1):
+                dst = g[n1][n2]['weight'] + (g.nodes[n1]['spixel count'] + g.nodes[n2]['spixel count']) * 40
+                if dst < cheapest_edge_val:
+                    cheapest_edge_val = dst
+                    cheapest_edge = [n1, n2]
+
+        n1 = cheapest_edge[0]
+        n2 = cheapest_edge[1]
+
+        ds.merge(n1, n2)
+        new_spixel_count = g.nodes[n1]['spixel count'] + g.nodes[n2]['spixel count']
+
+        ds_sub = ds.subset(n1)
+        for n in ds_sub:
+            g.nodes[n]['spixel count'] = new_spixel_count
+            if n not in active:
+                active.append(n)
+
+            n_internal_con = []
+            for t in nx.all_neighbors(g, n):
+                if t in ds_sub:
+                    n_internal_con.append(t)
+
+            for t in n_internal_con:
+                g.remove_edge(n, t)
+
+    return g, ds
