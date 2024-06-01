@@ -22,6 +22,8 @@ layer#.npy: an array of object masks on one layer (with the same size as the dow
 
 Please find the tunnel_book.ipynb to get start with our project.
 
+Please find the notebook inside inpaint folder to run detailed example or automatic example.
+
 # Parallax Effect Web
 Click [here](https://koitu.github.io/cs413-computational-photography-project)
 
