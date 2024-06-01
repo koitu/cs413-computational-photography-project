@@ -43,6 +43,7 @@ class InpaintModel:
             img_a = img.convert('RGBA')
         img = np.array(img)
         img_a = np.array(img_a)
+        ## img_a for RGBA type
         self.input_img = img
         self.input_img_a = img_a
 
@@ -136,11 +137,13 @@ class InpaintModel:
         mask = self.mask_layers[n-1].copy()
         sampled_coords = []
         if sample_method == 'grid':
+            ## sample based on the grid distance
             for i in range(0, mask.shape[0], grid_size):
                 for j in range(0, mask.shape[1], grid_size):
                     if mask[i, j]:
                         sampled_coords.append((j, i))
         elif sample_method == 'superpixel':
+            ## sample based on superpixel center
             image = self.layers[n-1].copy()
             segments = slic(image, n_segments=slic_segments, compactness=slic_compactness, start_label=1)
             regions = regionprops(segments)
@@ -163,7 +166,8 @@ class InpaintModel:
         
         mask_idx = np.argmin(score)
         samples = np.zeros_like(mask)
-        
+
+        ## visualization
         if sample_method == 'grid':
             for coords in sampled_coords:
                 samples[max(coords[1]-5,0):min(coords[1]+5, samples.shape[0]-1), max(coords[0]-5,0):min(coords[0]+5, samples.shape[1]-1)] = 1
@@ -182,6 +186,7 @@ class InpaintModel:
 
 
     def layer_link_ground(self, n, filtered = True):
+        ## link the buttom valid pixel to the buttom
         mask = self.mask_layers[n-1].copy()
         for y in range(mask.shape[1]):
             for x in range(mask.shape[0]-1,0,-1):
