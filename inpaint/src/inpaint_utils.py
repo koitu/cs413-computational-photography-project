@@ -59,6 +59,20 @@ class InpaintModel:
         self.lama_ckpt = lama_ckpt
         self.device = device
 
+    def read_masks(self, masks = list()):
+        n = len(masks)
+        self.mask_numbers = n
+        layers = []
+        layers_a = []
+        mask_layers = []
+        for i in range(n):
+            mask = masks[i]
+            mask_layers.append(mask)
+            layers.append(self.input_img.copy())
+            layers_a.append(self.input_img_a.copy())
+        layers.append(self.input_img.copy())
+        layers_a.append(self.input_img_a.copy())
+
     def load_masks(self, masks_path):
         n = len(masks_path)
         self.mask_numbers = n
@@ -77,7 +91,7 @@ class InpaintModel:
         layers.append(self.input_img.copy())
         layers_a.append(self.input_img_a.copy())
 
-        self.mask_layers_origin = mask_layers
+        self.mask_layers_origin = mask_layers.copy()
         self.mask_layers = mask_layers
         self.layers = layers
         self.layers_a = layers_a
@@ -94,9 +108,13 @@ class InpaintModel:
         return smoothed_mask
     
     
-    def create_layer(self, n = 1):
-        self.layers[n-1][~self.mask_layers[n-1]] = [0,0,0]
-        self.layers_a[n-1][~self.mask_layers[n-1]] = [0,0,0,0]
+    def create_layer(self, n = 1, filtered = False):
+        if not filtered:
+            mask = self.mask_layers_origin[n-1]
+        else:
+            mask = self.mask_layers[n-1]
+        self.layers[n-1][~mask] = [0,0,0]
+        self.layers_a[n-1][~mask] = [0,0,0,0]
         return self.layers_a[n-1]
     
     def inpaint_layer(self, mask_idx = 1):
@@ -148,10 +166,10 @@ class InpaintModel:
         
         if sample_method == 'grid':
             for coords in sampled_coords:
-                samples[max(coords[1]-2,0):min(coords[1]+2, samples.shape[0]-1), max(coords[0]-2,0):min(coords[0]+2, samples.shape[1]-1)] = 1
+                samples[max(coords[1]-5,0):min(coords[1]+5, samples.shape[0]-1), max(coords[0]-5,0):min(coords[0]+5, samples.shape[1]-1)] = 1
         elif sample_method == 'superpixel':
             for coords in sampled_coords:
-                samples[int(coords[0])-2 :int(coords[0])+2, int(coords[1])-2:int(coords[1])+2] = 1
+                samples[int(coords[0])-5 :int(coords[0])+5, int(coords[1])-5:int(coords[1])+5] = 1
         else:
             raise ValueError('Sample method not supported')      
         mask = masks[mask_idx] & self.masked
@@ -163,7 +181,7 @@ class InpaintModel:
         return samples, mask
 
 
-    def layer_link_ground(self, n):
+    def layer_link_ground(self, n, filtered = True):
         mask = self.mask_layers[n-1].copy()
         for y in range(mask.shape[1]):
             for x in range(mask.shape[0]-1,0,-1):
@@ -172,9 +190,18 @@ class InpaintModel:
                     mask[min_row_index:, y] = True
                     break
         self.mask_layers[n-1] = mask
+        if filtered:
+            mask = self.mask_layers_origin[n-1].copy()
+            for y in range(mask.shape[1]):
+                for x in range(mask.shape[0]-1,0,-1):
+                    if mask[x, y]:
+                        min_row_index = x
+                        mask[min_row_index:, y] = True
+                        break
+            self.mask_layers_origin[n-1] = mask
         return mask
     
-    def auto_generate_layers(self, filter_segma=10, filter_threshold=0.2, link_to_ground = False, sample_method = 'superpixel'):
+    def auto_generate_layers(self, filter_segma=10, filter_threshold=0.2, link_to_ground = False, sample_method = 'superpixel', Filter_layer = False):
         for i in range(self.mask_numbers):
             number = i + 1
             if number > 1:
@@ -182,7 +209,8 @@ class InpaintModel:
             self.mask_filter_process(number, sigma=filter_segma, threshold=filter_threshold)
             if link_to_ground:
                 self.layer_link_ground(number)
-            self.create_layer(number)
+                self.mask_filter_process(number, sigma=filter_segma, threshold= filter_threshold * 1.5, filter = 'gaussian')
+            self.create_layer(number, filtered = Filter_layer)
             self.inpaint_layer(number)
     
     def save_outputs(self, filepath):
