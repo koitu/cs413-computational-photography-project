@@ -9,6 +9,8 @@ from skimage.segmentation import slic
 
 
 class SegmentModel:
+    # automatic loading of the segment anything model
+
     def __init__(self, points_per_side=32):
         model_path = "./models/sam_vit_h_4b8939.pth"
         model_type = "vit_h"
@@ -22,13 +24,6 @@ class SegmentModel:
         sam.to(device=device)
 
         self.segment_anything = SamAutomaticMaskGenerator(sam, points_per_side=points_per_side)
-
-
-InitSegmentModel = None
-
-
-# def get_msk_gen():
-#     return segment_anything
 
 
 def show_anns(anns):
@@ -205,6 +200,21 @@ def check_overlapping(masks):
         print("There is no overlap")
 
 
+def get_masks(img, object_masks, groups):
+    """
+    Given the image, the result of segment-anything, and the kmean groups get the list of masks
+    """
+    masks = []
+
+    for i, group in enumerate(groups):
+        mask = np.zeros((img.shape[0], img.shape[1]), dtype=bool)
+        for idx in group:
+            mask[object_masks[idx]['segmentation']] = True
+        masks.append(mask)
+        
+    return masks
+    
+
 def show_layers(img, object_masks, groups):
     plt.figure(figsize=(10, 8))
 
@@ -212,7 +222,7 @@ def show_layers(img, object_masks, groups):
         if len(group) == 0:
             continue
 
-        ax = plt.subplot(2, 2, i + 1)
+        ax = plt.subplot(321 + i)
 
         res_img = np.zeros_like(img)
         for idx in group:

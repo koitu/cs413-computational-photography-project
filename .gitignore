@@ -4,5 +4,6 @@
 __pycache__/
 models/*
 !models/.gitkeep
+!output/.gitkeep
 
 .DS_Store

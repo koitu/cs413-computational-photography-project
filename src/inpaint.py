@@ -5,15 +5,16 @@ from PIL import Image, ImageOps
 import sys
 import os
 
-inpaint_anything_path = './InpaintAnything'
-if inpaint_anything_path not in sys.path:
-    sys.path.append(inpaint_anything_path)
-sys.path.append('./src')
-sys.path.append('./src/InpaintAnything')
+# inpaint_anything_path = './InpaintAnything'
+# if inpaint_anything_path not in sys.path:
+#     sys.path.append(inpaint_anything_path)
+# sys.path.append('./src')
+# sys.path.append('./src/InpaintAnything')
+sys.path.append(os.path.join(sys.path[0], "src/InpaintAnything"))
 
-from sam_segment import predict_masks_with_sam
-from lama_inpaint import inpaint_img_with_lama
-from utils import load_img_to_array, save_array_to_img, dilate_mask, \
+from src.InpaintAnything.sam_segment import predict_masks_with_sam
+from src.InpaintAnything.lama_inpaint import inpaint_img_with_lama
+from src.InpaintAnything.utils import load_img_to_array, save_array_to_img, dilate_mask, \
     show_mask, show_points, get_clicked_point
 
 from scipy.ndimage import gaussian_filter
@@ -22,28 +23,27 @@ from skimage.segmentation import slic
 from skimage.measure import regionprops
 
 
-
 class InpaintModel:
-    def __init__(self, input_img = './data/init_image/1.jpg',
-                 resizeshape = None,
-                point_labels = [1],
-                dilate_kernel_size =15,
-                output_dir = '../results',
-                sam_model_type = 'vit_t',
-                sam_ckpt = './src/InpaintAnything/weights/mobile_sam.pt',
-                lama_config = './src/InpaintAnything/lama/configs/prediction/default.yaml',
-                lama_ckpt = './models/big-lama',
-                device = "cuda" if torch.cuda.is_available() else "cpu"):
-        self.input_img = input_img
-        img = load_img_to_array(input_img)
-        img_pil = Image.open(input_img)
-        img_pil = ImageOps.exif_transpose(img_pil)
-        if resizeshape != None:
-            img = img_pil.resize((resizeshape[1], resizeshape[0]))
-            img_a = img.convert('RGBA')
-        img = np.array(img)
-        img_a = np.array(img_a)
-        ## img_a for RGBA type
+    def __init__(self,
+                 input_img,
+                 # input_img='./data/init_image/1.jpg',
+                 # resizeshape=None,
+                 point_labels=(1),
+                 dilate_kernel_size=15,
+                 output_dir='../results',
+                 sam_model_type='vit_t',
+                 sam_ckpt='./src/InpaintAnything/weights/mobile_sam.pt',
+                 lama_config='./src/InpaintAnything/lama/configs/prediction/default.yaml',
+                 lama_ckpt='./models/big-lama',
+                 device="cuda" if torch.cuda.is_available() else "cpu"):
+        if np.max(input_img) <= 1.0:
+            pil_img = Image.fromarray(np.uint8(input_img * 255.0))
+        else:
+            pil_img = Image.fromarray(input_img)
+
+        img = np.array(pil_img.convert("RGB"))
+        img_a = np.array(pil_img.convert("RGBA"))
+
         self.input_img = img
         self.input_img_a = img_a
 
@@ -60,7 +60,10 @@ class InpaintModel:
         self.lama_ckpt = lama_ckpt
         self.device = device
 
-    def read_masks(self, masks = list()):
+    def set_masks(self, masks=()):
+        """
+        Load masks for inpainting from an array of masks
+        """
         n = len(masks)
         self.mask_numbers = n
         layers = []
@@ -74,7 +77,15 @@ class InpaintModel:
         layers.append(self.input_img.copy())
         layers_a.append(self.input_img_a.copy())
 
+        self.mask_layers_origin = mask_layers.copy()
+        self.mask_layers = mask_layers
+        self.layers = layers
+        self.layers_a = layers_a
+
     def load_masks(self, masks_path):
+        """
+        Load masks for inpainting from an array of .npy file paths
+        """
         n = len(masks_path)
         self.mask_numbers = n
         layers = []
@@ -98,7 +109,7 @@ class InpaintModel:
         self.layers_a = layers_a
 
 
-    def mask_filter_process(self, n = 1, sigma=10, threshold = 0.2,filter = 'gaussian', modify = True):
+    def mask_filter_process(self, n = 1, sigma=10, threshold = 0.2, filter = 'gaussian', modify = True):
         if filter == 'gaussian':
             smoothed_mask = gaussian_filter(self.mask_layers_origin[n-1].astype(float), sigma=sigma)
             smoothed_mask = (smoothed_mask > threshold)
@@ -133,7 +144,14 @@ class InpaintModel:
             self.layers_a[i] = np.array(Image.fromarray(self.layers[mask_idx]).convert('RGBA'))
         return image_inpaint
     
-    def mask_re_segmentation(self, n, sample_method = 'grid', grid_size = 80, slic_segments = 100, slic_compactness = 10, modify = True):
+    def mask_re_segmentation(self,
+                             n,
+                             sample_method='grid',
+                             grid_size=80,
+                             slic_segments=100,
+                             slic_compactness=10,
+                             modify =True):
+
         mask = self.mask_layers[n-1].copy()
         sampled_coords = []
         if sample_method == 'grid':
@@ -184,12 +202,13 @@ class InpaintModel:
         
         return samples, mask
 
-
     def layer_link_ground(self, n, filtered = True):
-        ## link the buttom valid pixel to the buttom
+        """
+        link the bottom valid pixel to the bottom
+        """
         mask = self.mask_layers[n-1].copy()
         for y in range(mask.shape[1]):
-            for x in range(mask.shape[0]-1,0,-1):
+            for x in range(mask.shape[0]-1, 0, -1):
                 if mask[x, y]:
                     min_row_index = x
                     mask[min_row_index:, y] = True
@@ -206,18 +225,31 @@ class InpaintModel:
             self.mask_layers_origin[n-1] = mask
         return mask
     
-    def auto_generate_layers(self, filter_segma=10, filter_threshold=0.2, link_to_ground = False, sample_method = 'superpixel', Filter_layer = False):
+    def auto_generate_layers(self,
+                             filter_sigma=10,
+                             filter_threshold=0.2,
+                             link_to_ground=False,
+                             sample_method='superpixel',
+                             filter_layer=False):
+        """
+        Automatically perform inpainting
+        """
         for i in range(self.mask_numbers):
             number = i + 1
             if number > 1:
-                self.mask_re_segmentation(number)
-            self.mask_filter_process(number, sigma=filter_segma, threshold=filter_threshold)
+                self.mask_re_segmentation(number, sample_method=sample_method)
+            self.mask_filter_process(number, sigma=filter_sigma, threshold=filter_threshold)
+
             if link_to_ground:
                 self.layer_link_ground(number)
-                self.mask_filter_process(number, sigma=filter_segma, threshold= filter_threshold * 1.5, filter = 'gaussian')
-            self.create_layer(number, filtered = Filter_layer)
+                self.mask_filter_process(number, sigma=filter_sigma, threshold=filter_threshold * 1.5)
+                
+            self.create_layer(number, filtered=filter_layer)
             self.inpaint_layer(number)
+
+    def get_outputs(self):
+        return self.layers_a[0:-1]
     
     def save_outputs(self, filepath):
-        for i in range(len(self.layers)):
+        for i in range(len(self.layers) - 1):
             save_array_to_img(self.layers_a[i], filepath + f'_{i}.png')

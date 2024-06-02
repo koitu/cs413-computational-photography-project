@@ -15,11 +15,17 @@ def load_image(path):
 
 
 def downscale(img, n, m):
+    """
+    Downscale a given image into an (n, m) array
+    """
     # return cv2.resize(img, (n, m), interpolation=cv2.INTER_AREA)
     return resize(img, (n, m), anti_aliasing=True)
 
 
 def get_superpixels(img, n_segments=10000, start_label=1):
+    """
+    Get the superpixel labels for a given image
+    """
     # n, m = np.shape(img)
     #
     # slic_res = slic(img, n_segments=n_segments, start_label=start_label, slic_zero=True)

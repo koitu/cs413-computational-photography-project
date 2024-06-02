@@ -3,11 +3,23 @@ import torch
 import numpy as np
 
 from sklearn.cluster import KMeans
-from yellowbrick.cluster import KElbowVisualizer
+from yellowbrick.cluster import KElbow, KElbowVisualizer
 
 
-def get_optimal_k(object_masks, depth):
+def get_optimal_k(object_masks, depth, visualize=False):
+    """
+    Use the Elbow method to find a reasonable number of layers to segment the image into
+
+    Parameters:
+        - object_masks: the result of segment-anything
+        - depth: the result of depth-anything
+        - visualize: to visualize a graph or not
+
+    Returns:
+        - k: the k value
+    """
     depth = torch.from_numpy(depth)
+    
     depth_features = []
     for m in object_masks:
         mask = m['segmentation']
@@ -19,13 +31,17 @@ def get_optimal_k(object_masks, depth):
 
     depth_features = np.array(depth_features)
     model = KMeans()
-    visualizer = KElbowVisualizer(model, k=(2, 10), metric='distortion', timings=True)
-    visualizer.fit(depth_features)
-    # visualizer.show()
+    
+    if visualize:
+        visualizer = KElbowVisualizer(model, k=(2, 10), metric='distortion', timings=True)
+        visualizer.fit(depth_features)
+        optimal_k = visualizer.elbow_value_
+    else:
+        k_elbow = KElbow(model, k=(2, 10), metric='distortion', timings=True)
+        k_elbow.fit(depth_features)
+        optimal_k = k_elbow.elbow_value_
 
-    # optimalK = visualizer.elbow_value_
-    # print(f"Optimal number of clusters: {optimalK}")
-    return visualizer.elbow_value_
+    return optimal_k
 
 
 def kmeans(d_img, n_clusters=4):

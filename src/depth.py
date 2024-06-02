@@ -15,6 +15,10 @@ from src.DepthAnything.depth_anything.util.transform import Resize, NormalizeIma
 
 
 class DepthModel:
+    """
+    Automatic loading of the depth anything model that includes transform to prepare image for the model
+    """
+
     def __init__(self):
         encoder = 'vits'  # can also be 'vitb' or 'vitl'
 
@@ -48,9 +52,11 @@ def estimate_depth(img):
     if InitDepthModel is None:
         InitDepthModel = DepthModel()
 
+    # Transform the image for the model
     img = InitDepthModel.transform({'image': img})['image']
     img = torch.from_numpy(img).unsqueeze(0)
 
+    # Run the model and get the output
     depth = InitDepthModel.depth_anything(img)  # depth shape: 1xHxW
     depth = depth.detach().squeeze().numpy()
 
