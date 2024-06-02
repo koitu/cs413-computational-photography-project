@@ -41,7 +41,7 @@ Please find the tunnel_book.ipynb to get start with our project.
 
 Please find the notebook inside inpaint folder to run detailed example or automatic example. -->
 
-## To update the Github pages
+## To update Github pages
 ```
 git push origin --delete gh-pages
 git subtree push --prefix website origin gh-pages

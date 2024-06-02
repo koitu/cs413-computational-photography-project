@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from urllib.request import urlretrieve
-from segment_anything import sam_model_registry, SamAutomaticMaskGenerator #, SamPredictor
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 from skimage.segmentation import slic
 
 
@@ -27,6 +27,9 @@ class SegmentModel:
 
 
 def show_anns(anns):
+    """
+    Display all the objects found by segment-anything
+    """
     if len(anns) == 0:
         return
     sorted_anns = sorted(anns, key=(lambda x: x['area']), reverse=True)
@@ -53,16 +56,10 @@ def show_all_segmts_ind(masks, img):
         plt.show()
 
 
-# def downsample_image_opencv(img, output_size):
-#     height, width = img.shape[:2]
-#     new_height, new_width = output_size
-#
-#     resized_img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
-#
-#     return resized_img
-
-
 def remove_small_masks(masks, threshold=500):
+    """
+    Remove all the masks with less than threshold pixels
+    """
     large_masks =[]
     for m in masks:
         mask = m['segmentation']
@@ -100,6 +97,9 @@ def remove_overlapping(masks, overlap_ratio_threshold=0.05):
 
 
 def obtain_rest_of_img(object_masks, original_img):
+    """
+    Obtain the part of the image that was not segmented by segment-anything
+    """
     combined_mask = np.sum([m['segmentation'] for m in object_masks], axis=0)
     unsegmented_part = np.where(combined_mask > 0, 0, 1)
     res_img = np.ones_like(original_img)
@@ -110,6 +110,9 @@ def obtain_rest_of_img(object_masks, original_img):
 
 
 def img_white_p_ratio(img):
+    """
+    Determine the percent of the image that is white
+    """
     return np.sum(img == 1.0)/(img.shape[0]*img.shape[1]*img.shape[2])
 
 
@@ -142,7 +145,16 @@ def remove_white_canva(res_img, res_masks):
     return res_masks_no_white_bg
 
 
-def obtain_all_objects(mask_generator, img_to_procd, img_r_thrd=0.90, n_thrd=5, ovlp_r_thrd=0.1, small_thrd=500):
+def obtain_all_objects(
+        mask_generator,
+        img_to_procd,
+        img_r_thrd=0.90,
+        n_thrd=5,
+        ovlp_r_thrd=0.1,
+        small_thrd=500):
+    """
+    Run segment-anything on an image until we pass img_r_thrd ratio of unsegmented or n_thrd tries
+    """
     n = 0
     diff = 1
     object_masks = []
@@ -276,6 +288,9 @@ def show_layers(img, object_masks, groups):
 #     return layers_inx, layers
 
 def fill_with_superpixels(img_lr, object_masks):
+    """
+    Replace the result of segment-anything with superpixels if they have over 10% overlap
+    """
     rgb_slic = slic(img_lr, n_segments=1000, start_label=1, slic_zero=True)
 
     unique_superpixels, superpixel_counts = np.unique(rgb_slic, return_counts=True)

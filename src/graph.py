@@ -12,6 +12,7 @@ def merge_nodes(g, n1, n2):
     """
     g.remove_edge(n1, n2)
 
+    # update the node values for the new merged node
     g.nodes[n1]['mask'] = np.logical_or(g.nodes[n1]['mask'], g.nodes[n2]['mask'])
     g.nodes[n1]['pixel count'] += g.nodes[n2]['pixel count']
     g.nodes[n1]['total color'] = np.append(g.nodes[n1]['total color'], g.nodes[n2]['total color'], axis=0)
@@ -19,6 +20,7 @@ def merge_nodes(g, n1, n2):
     g.nodes[n1]['mean color'] = np.sum(g.nodes[n1]['total color'] / g.nodes[n1]['pixel count'], axis=0)
     g.nodes[n1]['mean depth'] = np.sum(g.nodes[n1]['total depth'] / g.nodes[n1]['pixel count'], axis=0)
 
+    # remove and save all the edges from both nodes
     n1_con = []
     for c in nx.all_neighbors(g, n1):
         n1_con.append(c)
@@ -31,6 +33,7 @@ def merge_nodes(g, n1, n2):
     for c in n2_con:
         g.remove_edge(n2, c)
 
+    # add back all the edges as terminating in the new merged node
     for n in np.unique(n1_con + n2_con):
         g.add_edge(n1, n)
         g[n1][n]['weight'] = (

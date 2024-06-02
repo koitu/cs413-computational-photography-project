@@ -36,6 +36,8 @@ class InpaintModel:
                  lama_config='./src/InpaintAnything/lama/configs/prediction/default.yaml',
                  lama_ckpt='./models/big-lama',
                  device="cuda" if torch.cuda.is_available() else "cpu"):
+
+        # convert the input image into RGB and RGBA
         if np.max(input_img) <= 1.0:
             pil_img = Image.fromarray(np.uint8(input_img * 255.0))
         else:
@@ -47,8 +49,8 @@ class InpaintModel:
         self.input_img = img
         self.input_img_a = img_a
 
+        # save the other information
         self.mask_numbers = 0
-
         self.masked = np.zeros((img.shape[0], img.shape[1]), dtype=bool)
 
         self.point_labels = point_labels
@@ -109,27 +111,48 @@ class InpaintModel:
         self.layers_a = layers_a
 
 
-    def mask_filter_process(self, n = 1, sigma=10, threshold = 0.2, filter = 'gaussian', modify = True):
+    def mask_filter_process(self,
+                            n=1,
+                            sigma=10,
+                            threshold=0.2,
+                            filter='gaussian',
+                            modify=True):
+        """
+        Smooth and increase the size of a mask by applying a Gaussian filter then thresholding
+
+        Parameters:
+            - n: the layers of the mask
+            - sigma, threshold: used for Gaussian
+        """
         if filter == 'gaussian':
             smoothed_mask = gaussian_filter(self.mask_layers_origin[n-1].astype(float), sigma=sigma)
             smoothed_mask = (smoothed_mask > threshold)
         else :
             raise ValueError('Filter not supported')
+
         if modify:
             self.mask_layers[n-1] = smoothed_mask
         return smoothed_mask
     
     
-    def create_layer(self, n = 1, filtered = False):
+    def create_layer(self, n=1, filtered=False):
+        """
+        Get the image at layer n after applying the inverse mask for the corresponding layer
+        """
         if not filtered:
             mask = self.mask_layers_origin[n-1]
         else:
             mask = self.mask_layers[n-1]
+
         self.layers[n-1][~mask] = [0,0,0]
         self.layers_a[n-1][~mask] = [0,0,0,0]
+
         return self.layers_a[n-1]
     
     def inpaint_layer(self, mask_idx = 1):
+        """
+        Perform inpainting at the layer specified
+        """
         image = self.layers[mask_idx].copy()
         mask = self.mask_layers[mask_idx-1]
         self.masked |= mask
