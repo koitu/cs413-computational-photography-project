@@ -5,6 +5,111 @@ from skimage import graph, color
 from scipy.cluster.hierarchy import DisjointSet
 
 
+def merge_nodes(g, n1, n2):
+    """
+    merges the node n2 into the n1 while combining their pixel count, color, and depth into a single larger node
+    """
+    g.remove_edge(n1, n2)
+
+    g.nodes[n1]['mask'] = np.logical_or(g.nodes[n1]['mask'], g.nodes[n2]['mask'])
+    g.nodes[n1]['pixel count'] += g.nodes[n2]['pixel count']
+    g.nodes[n1]['total color'] = np.append(g.nodes[n1]['total color'], g.nodes[n2]['total color'], axis=0)
+    g.nodes[n1]['total depth'] = np.append(g.nodes[n1]['total depth'], g.nodes[n2]['total depth'], axis=0)
+    g.nodes[n1]['mean color'] = np.sum(g.nodes[n1]['total color'] / g.nodes[n1]['pixel count'], axis=0)
+    g.nodes[n1]['mean depth'] = np.sum(g.nodes[n1]['total depth'] / g.nodes[n1]['pixel count'], axis=0)
+
+    n1_con = []
+    for c in nx.all_neighbors(g, n1):
+        n1_con.append(c)
+    for c in n1_con:
+        g.remove_edge(n1, c)
+
+    n2_con = []
+    for c in nx.all_neighbors(g, n2):
+        n2_con.append(c)
+    for c in n2_con:
+        g.remove_edge(n2, c)
+
+    for n in np.unique(n1_con + n2_con):
+        g.add_edge(n1, n)
+        g[n1][n]['weight'] = (
+            color.deltaE_cie76(g.nodes[n1]['mean color'], g.nodes[n]['mean color'])
+            # abs(g.nodes[x]['mean depth'] - g.nodes[y]['mean depth'])
+        )
+
+    g.remove_node(n2)
+
+
+def merge_regions_until_done(g, start_regions, regions_left=4):
+    """
+    - g: the graph
+    - start_regions: the start regions (usually the edge nodes)
+    - regions_left: the number of regions when merging stops
+    """
+    g = g.copy()
+    regions = start_regions.copy()
+
+    while g.number_of_nodes() > regions_left:
+        cheapest_edge_val = np.inf
+        cheapest_edge = [0, 0]
+
+        for n1 in regions:
+            for n2 in nx.all_neighbors(g, n1):
+                dst = 15 * (g.nodes[n1]['mean depth'] - g.nodes[n2]['mean depth']) ** 2 + (
+                        g.nodes[n1]['pixel count'] + g.nodes[n2]['pixel count']) + g[n1][n2]['weight']
+                if dst < cheapest_edge_val:
+                    cheapest_edge_val = dst
+                    cheapest_edge = [n1, n2]
+
+        n1 = cheapest_edge[0]
+        n2 = cheapest_edge[1]
+        merge_nodes(g, n1, n2)
+        if n2 in regions:
+            regions.remove(n2)
+
+    return g, regions
+
+
+def merge_sets_until_done(g, start_regions, regions_left=4):
+    g = g.copy()
+    ds = DisjointSet(g.nodes())
+    active = start_regions.copy()
+
+    while len(ds.subsets()) > regions_left:
+        cheapest_edge_val = np.inf
+        cheapest_edge = [0, 0]
+
+        # active nodes don't have attachments to interior nodes
+        for n1 in active:
+            for n2 in nx.all_neighbors(g, n1):
+                dst = g[n1][n2]['weight'] + (g.nodes[n1]['spixel count'] + g.nodes[n2]['spixel count']) * 40
+                if dst < cheapest_edge_val:
+                    cheapest_edge_val = dst
+                    cheapest_edge = [n1, n2]
+
+        n1 = cheapest_edge[0]
+        n2 = cheapest_edge[1]
+
+        ds.merge(n1, n2)
+        new_spixel_count = g.nodes[n1]['spixel count'] + g.nodes[n2]['spixel count']
+
+        ds_sub = ds.subset(n1)
+        for n in ds_sub:
+            g.nodes[n]['spixel count'] = new_spixel_count
+            if n not in active:
+                active.append(n)
+
+            n_internal_con = []
+            for t in nx.all_neighbors(g, n):
+                if t in ds_sub:
+                    n_internal_con.append(t)
+
+            for t in n_internal_con:
+                g.remove_edge(n, t)
+
+    return g, ds
+
+
 class RAG:
     def __init__(self, img, depth, labels, objects=None):
         """
@@ -105,106 +210,17 @@ class RAG:
         self.depth = depth
         self.labels = labels
 
-
-def merge_nodes(g, n1, n2):
-    """
-    merges the node n2 into the n1 while combining their pixel count, color, and depth into a single larger node
-    """
-    g.remove_edge(n1, n2)
-
-    g.nodes[n1]['mask'] = np.logical_or(g.nodes[n1]['mask'], g.nodes[n2]['mask'])
-    g.nodes[n1]['pixel count'] += g.nodes[n2]['pixel count']
-    g.nodes[n1]['total color'] = np.append(g.nodes[n1]['total color'], g.nodes[n2]['total color'], axis=0)
-    g.nodes[n1]['total depth'] = np.append(g.nodes[n1]['total depth'], g.nodes[n2]['total depth'], axis=0)
-    g.nodes[n1]['mean color'] = np.sum(g.nodes[n1]['total color'] / g.nodes[n1]['pixel count'], axis=0)
-    g.nodes[n1]['mean depth'] = np.sum(g.nodes[n1]['total depth'] / g.nodes[n1]['pixel count'], axis=0)
-
-    n1_con = []
-    for c in nx.all_neighbors(g, n1):
-        n1_con.append(c)
-    for c in n1_con:
-        g.remove_edge(n1, c)
-
-    n2_con = []
-    for c in nx.all_neighbors(g, n2):
-        n2_con.append(c)
-    for c in n2_con:
-        g.remove_edge(n2, c)
-
-    for n in np.unique(n1_con + n2_con):
-        g.add_edge(n1, n)
-        g[n1][n]['weight'] = (
-            color.deltaE_cie76(g.nodes[n1]['mean color'], g.nodes[n]['mean color'])
-            # abs(g.nodes[x]['mean depth'] - g.nodes[y]['mean depth'])
-        )
-
-    g.remove_node(n2)
-
-
-def merge_regions_until_done(g, start_regions, regions_left=4):
-    """
-    - g: the graph
-    - start_regions: the start regions (usually the edge nodes)
-    - regions_left: the number of regions when merging stops
-    """
-    g = g.copy()
-    regions = start_regions.copy()
-
-    while g.number_of_nodes() > regions_left:
-        cheapest_edge_val = np.inf
-        cheapest_edge = [0, 0]
-
-        for n1 in regions:
-            for n2 in nx.all_neighbors(g, n1):
-                dst = 15 * (g.nodes[n1]['mean depth'] - g.nodes[n2]['mean depth']) ** 2 + (
-                        g.nodes[n1]['pixel count'] + g.nodes[n2]['pixel count']) + g[n1][n2]['weight']
-                if dst < cheapest_edge_val:
-                    cheapest_edge_val = dst
-                    cheapest_edge = [n1, n2]
-
-        n1 = cheapest_edge[0]
-        n2 = cheapest_edge[1]
-        merge_nodes(g, n1, n2)
-        if n2 in regions:
-            regions.remove(n2)
-
-    return g, regions
-
-def merge_sets_until_done(g, start_regions, regions_left=4):
-    g = g.copy()
-    ds = DisjointSet(g.nodes())
-    active = start_regions.copy()
-
-    while len(ds.subsets()) > regions_left:
-        cheapest_edge_val = np.inf
-        cheapest_edge = [0, 0]
-
-        # active nodes don't have attachments to interior nodes
-        for n1 in active:
-            for n2 in nx.all_neighbors(g, n1):
-                dst = g[n1][n2]['weight'] + (g.nodes[n1]['spixel count'] + g.nodes[n2]['spixel count']) * 40
-                if dst < cheapest_edge_val:
-                    cheapest_edge_val = dst
-                    cheapest_edge = [n1, n2]
-
-        n1 = cheapest_edge[0]
-        n2 = cheapest_edge[1]
-
-        ds.merge(n1, n2)
-        new_spixel_count = g.nodes[n1]['spixel count'] + g.nodes[n2]['spixel count']
-
-        ds_sub = ds.subset(n1)
-        for n in ds_sub:
-            g.nodes[n]['spixel count'] = new_spixel_count
-            if n not in active:
-                active.append(n)
-
-            n_internal_con = []
-            for t in nx.all_neighbors(g, n):
-                if t in ds_sub:
-                    n_internal_con.append(t)
-
-            for t in n_internal_con:
-                g.remove_edge(n, t)
-
-    return g, ds
+    
+    def get_masks(num_masks=4):
+        g, s = merge_sets_until_done(self.graph, self.edge_nodes, num_masks)
+        
+        masks = []
+        for i, reg in enumerate(s.subsets()):
+            mask = np.zeros((img_n, img_m), dtype=bool)
+            for n in reg:
+                mask[g.nodes[n]['mask']] = True
+            mask = binary_fill_holes(mask)
+            masks.append((np.average(self.depth[mask]), mask))
+        
+        masks.sort(key=lambda x: x[0])
+        return [x[1] for x in masks]

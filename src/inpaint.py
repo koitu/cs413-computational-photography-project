@@ -5,11 +5,11 @@ from PIL import Image, ImageOps
 import sys
 import os
 
-inpaint_anything_path = './Inpaint-Anything'
+inpaint_anything_path = './InpaintAnything'
 if inpaint_anything_path not in sys.path:
     sys.path.append(inpaint_anything_path)
-sys.path.append('../src')
-sys.path.append('../src/Inpaint-Anything')
+sys.path.append('./src')
+sys.path.append('./src/InpaintAnything')
 
 from sam_segment import predict_masks_with_sam
 from lama_inpaint import inpaint_img_with_lama
@@ -30,9 +30,9 @@ class InpaintModel:
                 dilate_kernel_size =15,
                 output_dir = '../results',
                 sam_model_type = 'vit_t',
-                sam_ckpt = '../src/Inpaint-Anything/weights/mobile_sam.pt',
-                lama_config = '../src/Inpaint-Anything/lama/configs/prediction/default.yaml',
-                lama_ckpt = '../src/Inpaint-Anything/pretrained_models/big-lama',
+                sam_ckpt = './src/InpaintAnything/weights/mobile_sam.pt',
+                lama_config = './src/InpaintAnything/lama/configs/prediction/default.yaml',
+                lama_ckpt = './models/big-lama',
                 device = "cuda" if torch.cuda.is_available() else "cpu"):
         self.input_img = input_img
         img = load_img_to_array(input_img)
